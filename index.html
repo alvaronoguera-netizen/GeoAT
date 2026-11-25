@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Geo AT | Geoportal académico</title>
+  <meta name="description" content="Geo AT, geoportal académico de la carrera Técnico Universitario en Agrimensura e Ingeniería en Administración de Tierras de CUNORI-USAC.">
+  <link rel="icon" href="assets/logo-cunori-at.png" type="image/png">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-wrap">
+      <img src="assets/logo-cunori-at.png" class="brand-logo" alt="CUNORI - Administración de Tierras">
+      <div>
+        <h1>Geo AT</h1>
+        <p>Geoportal académico de Administración de Tierras · CUNORI-USAC</p>
+      </div>
+    </div>
+    <nav class="top-actions">
+      <button id="btnAddLayer" class="primary-btn">＋ Agregar capa</button>
+      <button id="btnHelp" class="ghost-btn">Ayuda</button>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar" id="sidebar">
+      <section class="side-section">
+        <div class="section-title-row">
+          <h2>Capas</h2>
+          <span id="layerCount" class="badge">0</span>
+        </div>
+        <input id="layerSearch" class="search" type="search" placeholder="Buscar capa..." aria-label="Buscar capa">
+        <div id="layerList" class="layer-list"></div>
+      </section>
+      <section class="side-section compact">
+        <h3>Herramientas</h3>
+        <div class="tool-grid">
+          <button id="btnMeasureDistance" class="tool-btn">📏 Distancia</button>
+          <button id="btnMeasureArea" class="tool-btn">⬡ Área</button>
+          <button id="btnClearDraw" class="tool-btn">⌫ Limpiar dibujo</button>
+        </div>
+      </section>
+      <section class="side-section compact">
+        <h3>Estado</h3>
+        <p id="statusText" class="muted">Listo. Selecciona una capa o agrega una nueva.</p>
+      </section>
+    </aside>
+
+    <section class="map-shell" id="map-shell">
+      <div id="map"></div>
+      <div class="map-overlay top-left">
+        <button id="btnLocateDefault" class="map-control">⌖ CUNORI</button>
+        <button id="btnToggleLabels" class="map-control">Etiquetas</button>
+      </div>
+      <div class="map-overlay bottom-right">
+        <div class="coord-box" id="coordBox">Lat: — | Lon: —</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="modalTitle">Nueva capa</h2>
+          <p id="stepLabel" class="muted">Paso 1 de 8</p>
+        </div>
+        <button id="btnCloseModal" class="icon-btn" aria-label="Cerrar">×</button>
+      </div>
+      <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+
+      <form id="metadataForm">
+        <!-- PASO 1: CARGAR CAPA -->
+        <div class="step active" data-step="1">
+          <h3>Paso 1 · Cargar capa</h3>
+          <p class="muted">Selecciona primero el archivo geográfico. Geo AT utilizará esta información para preparar los siguientes pasos.</p>
+          <div class="file-zone">
+            <label for="layerFile"><strong>Selecciona el archivo geográfico</strong><span>Formatos disponibles actualmente: GeoJSON (.geojson/.json) y GeoTIFF (.tif/.tiff). El soporte para Shapefile ZIP y KML/KMZ se incorporará en la siguiente etapa.</span></label>
+            <input id="layerFile" type="file" accept=".geojson,.json,.tif,.tiff,application/geo+json,application/json,image/tiff" required>
+            <div id="fileName" class="file-name">Ningún archivo seleccionado</div>
+          </div>
+          <div class="crs-box">
+            <label>Sistema de coordenadas de la capa
+              <select id="sourceCRS" name="sourceCRS">
+                <option value="AUTO">Detectar automáticamente</option>
+                <option value="EPSG:4326">WGS 84 geográficas — EPSG:4326</option>
+                <option value="EPSG:3857">WGS 84 / Web Mercator — EPSG:3857</option>
+                <option value="EPSG:32615">WGS 84 / UTM zona 15N — EPSG:32615</option>
+                <option value="EPSG:32616">WGS 84 / UTM zona 16N — EPSG:32616</option>
+                <option value="EPSG:32614">WGS 84 / UTM zona 14N — EPSG:32614</option>
+                <option value="EPSG:32617">WGS 84 / UTM zona 17N — EPSG:32617</option>
+                <option value="EPSG:4258">ETRS89 geográficas — EPSG:4258</option>
+                <option value="EPSG:4269">NAD83 geográficas — EPSG:4269</option>
+                <option value="EPSG:4267">NAD27 geográficas — EPSG:4267</option>
+                <option value="ESRI:103598">GTM (Guatemala) — ESRI:103598</option>
+                <option value="CUSTOM">Otro CRS (EPSG / PROJ.4 / WKT)</option>
+              </select>
+            </label>
+            <label id="customCRSWrap" class="custom-crs hidden">Definición del CRS
+              <textarea id="customCRS" name="customCRS" rows="3" placeholder="Ej.: EPSG:31982 o +proj=..."></textarea>
+            </label>
+            <p class="muted small-note">Geo AT transforma la capa a WGS84 antes de enviarla a Leaflet. Para GTM de Guatemala utiliza <strong>ESRI:103598</strong>.</p>
+          </div>
+          <div id="detectedExtentStep1" class="detected-box">Todavía no se ha seleccionado un archivo.</div>
+        </div>
+
+        <!-- PASO 2: IDENTIFICACIÓN -->
+        <div class="step" data-step="2">
+          <h3>Paso 2 · Identificación</h3>
+          <div class="form-grid">
+            <label>Título de la capa<input name="title" required></label>
+            <label>Tipo<select name="type"><option>Dataset</option><option>Feature</option><option>Feature type</option><option>Attribute</option><option>Attribute type</option><option>Raster dataset</option><option>Otro</option></select></label>
+            <label>Idioma<select name="language"><option>Español</option><option>Inglés</option><option>Francés</option><option>Otro</option></select></label>
+            <label>Resumen<textarea name="summary" rows="5" required></textarea></label>
+          </div>
+        </div>
+
+        <!-- PASO 3: CATEGORÍAS -->
+        <div class="step" data-step="3">
+          <h3>Paso 3 · Categorías</h3>
+          <p class="muted">Selecciona una o varias categorías.</p>
+          <div id="categoryGrid" class="category-grid"></div>
+          <label>Categoría personalizada<input name="customCategory" placeholder="Ej.: Administración de tierras"></label>
+        </div>
+
+        <!-- PASO 4: ACCESOS -->
+        <div class="step" data-step="4">
+          <h3>Paso 4 · Accesos</h3>
+          <div class="form-grid">
+            <label>Licencias<textarea name="license" rows="4" placeholder="Licencia o condiciones de uso"></textarea></label>
+            <label>Derechos<textarea name="rights" rows="4" placeholder="Derechos de autor, propiedad o titularidad"></textarea></label>
+            <label>Restricciones<textarea name="restrictions" rows="4" placeholder="Restricciones de acceso, uso o distribución"></textarea></label>
+          </div>
+        </div>
+
+        <!-- PASO 5: EXTENSIÓN -->
+        <div class="step" data-step="5">
+          <h3>Paso 5 · Extensión de la capa</h3>
+          <div class="radio-cards">
+            <label><input type="radio" name="extentMode" value="layer" checked><span><strong>A partir de la capa</strong><small>Detecta la extensión espacial y el CRS cuando el formato lo permite.</small></span></label>
+            <label><input type="radio" name="extentMode" value="layout"><span><strong>Layout map</strong><small>Descripción manual de extensión para un mapa preparado.</small></span></label>
+            <label><input type="radio" name="extentMode" value="book"><span><strong>Book map</strong><small>Descripción manual para una colección o libro de mapas.</small></span></label>
+          </div>
+          <div id="detectedExtent" class="detected-box">Selecciona una capa en el Paso 1 para consultar la extensión detectada.</div>
+        </div>
+
+        <!-- PASO 6: CONTACTO -->
+        <div class="step" data-step="6">
+          <h3>Paso 6 · Contacto</h3>
+          <div class="form-grid three">
+            <label>Nombre<input name="contactName"></label>
+            <label>Teléfono<input name="phone"></label>
+            <label>Correo<input name="email" type="email"></label>
+            <label>Rol<input name="role" placeholder="Ej.: estudiante, docente, responsable SIG"></label>
+            <label>Organización<input name="organization" value="CUNORI-USAC"></label>
+            <label>Dirección<input name="address"></label>
+            <label>Ciudad<input name="city" value="Chiquimula"></label>
+            <label>País<input name="country" value="Guatemala"></label>
+            <label>Web institucional<input name="website" type="url"></label>
+          </div>
+        </div>
+
+        <!-- PASO 7: ENLACE -->
+        <div class="step" data-step="7">
+          <h3>Paso 7 · Enlace</h3>
+          <label>Enlace directo a la capa o fuente<input name="link" type="url" placeholder="https://..."></label>
+          <label>Descripción del enlace<textarea name="linkDescription" rows="4" placeholder="Base de datos, repositorio, fuente original, documento de creación, etc."></textarea></label>
+        </div>
+
+        <!-- PASO 8: HISTORIAL -->
+        <div class="step" data-step="8">
+          <h3>Paso 8 · Historial</h3>
+          <div class="form-grid three">
+            <label>Fecha de creación<input name="created" type="date"></label>
+            <label>Fecha de revisión<input name="reviewed" type="date"></label>
+            <label>Fecha de publicación<input name="published" type="date"></label>
+          </div>
+          <div id="finalFileSummary" class="detected-box">Archivo seleccionado: —</div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" id="btnPrev" class="ghost-btn">← Anterior</button>
+          <div class="spacer"></div>
+          <button type="button" id="btnNext" class="primary-btn">Siguiente →</button>
+          <button type="submit" id="btnSave" class="primary-btn hidden">Guardar y publicar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="infoModal" class="modal-backdrop hidden">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+      <div class="modal-head"><div><h2 id="infoTitle">Información</h2></div><button class="icon-btn" data-close-info>×</button></div>
+      <div id="infoBody" class="info-body"></div>
+    </div>
+  </div>
+
+  <footer class="footer">Geo AT · CUNORI-USAC · Visor académico · Prototipo para prácticas y proyectos de la carrera</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.min.js"></script>
+  <script src="https://unpkg.com/georaster-layer-for-leaflet@4.1.2/dist/georaster-layer-for-leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

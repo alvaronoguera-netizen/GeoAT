@@ -1,0 +1,8 @@
+1. Descomprime el ZIP completo sin mezclarlo con la carpeta anterior.
+2. Abre la carpeta GeoAT_ACTUALIZADO en Visual Studio Code.
+3. Ejecuta index.html con Live Server.
+4. Debe aparecer el logo CUNORI / Administración de Tierras en el encabezado y el nombre Geo AT.
+5. El mapa debe mostrar un solo mundo; al pulsar Mapa sobre una capa, debe centrar la vista en su extensión.
+6. Agregar capa ahora empieza con Paso 1: Cargar capa.
+7. Estadísticas y Comparar ya no forman parte de la interfaz.
+8. Si el mapa queda blanco, verifica la conexión a Internet porque los mapas base se cargan desde servicios externos.
